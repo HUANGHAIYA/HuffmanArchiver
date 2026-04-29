@@ -17,6 +17,7 @@ Huffman符号化を用いて複数ファイルを1つのアーカイブとして
 
 ```bash
 gcc -o compress main.c
+```
 ## 実行方法
 コンパイル後、ターミナルで以下のコマンドとオプションが使用可能です
 Usage: ./compress <command> [options]
