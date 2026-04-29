@@ -16,7 +16,7 @@ Huffman符号化を用いて複数ファイルを1つのアーカイブとして
 ## ビルド方法
 
 ```bash
-gcc -o compress main.c
+gcc -o compress src/main.c
 ```
 ## 実行方法
 コンパイル後、ターミナルで以下のコマンドとオプションが使用可能です
