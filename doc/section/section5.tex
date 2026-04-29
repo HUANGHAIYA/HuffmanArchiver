@@ -1,0 +1,141 @@
+\section{プログラムについて}
+\subsection{プログラムの説明}
+プログラムにはcreate,extract,listの機能が実装されており、createでファイルをアーカイブファイルに圧縮でき、extractでアーカイブファイルからファイルを解凍することができる。listでアーカイブファイルから圧縮されたファイルや元のファイルの情報を読み取ることができる。
+\subsection{プログラムのコンパイルの仕方}
+Terminalでgcc -o compress main.cを打ち込む。ただし、Terminalのアドレスとファイルのアドレスによってcdコマンドでアドレスを変える必要がある。
+\subsection{プログラムの実行方法と想定した出力例}
+
+Commands:
+
+  create \verb|<archive> <files...>|    - Create compressed archive from files
+  
+  extract \verb|<archive> [directory]|  - Extract archive to directory
+
+  list \verb|<archive>|                 - List contents of archive
+
+
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/unknown-command.png}
+  \caption{Unknow-Command}
+  \label{fig:deerPixel}
+\end{figure}
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/createNormalFile.png}
+  \caption{create NormalFile}
+  \label{fig:deerPixel}
+\end{figure}
+
+
+
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/createSingleCharacterFile.png}
+  \caption{create Single Character File}
+  \label{fig:deerPixel}
+\end{figure}
+
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/createEmptyFile.png}
+  \caption{create Empty File}
+  \label{fig:deerPixel}
+\end{figure}
+
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/createMultiFiles1.png}
+  \caption{create MultiFiles}
+  \label{fig:deerPixel}
+\end{figure}
+
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/createMulti-FilesWithEmptyFile.png}
+  \caption{create Multi-Files with an Empty File}
+  \label{fig:deerPixel}
+\end{figure}
+
+
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/extract1.png}
+  \caption{extract Single-File archive}
+  \label{fig:deerPixel}
+\end{figure}
+
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/extract2.png}
+  \caption{extract Multi-Files archive}
+  \label{fig:deerPixel}
+\end{figure}
+
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/List.png}
+  \caption{List}
+  \label{fig:deerPixel}
+\end{figure}
+
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/listEmptyFile.png}
+  \caption{list Empty File}
+  \label{fig:deerPixel}
+\end{figure}
+
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=18cm]{reportFile/doc/images/listMulti-FilesWithEmptyFile.png}
+  \caption{list Multi-Files with an Empty File}
+  \label{fig:deerPixel}
+\end{figure}
+
+\subsection{プログラムの問題}
+今のプログラムは0もしくは1をASCIIに基づいてファイルに書き込んでいるため、実際は1 bitではなく1 byteで保存されているため、圧縮後のarchiveファイルが逆に元のファイルより大きい。それを解決するためにはbit streamでの書き込みや読み取り技術が必要で、今回は様々な問題を一つずつ改善したが、これだけはいまだに手の付けようが分からない。
+
+\subsection{工夫点　アピールポイント}
+\subsubsection{unsigned charについて}
+最初はcharを使ってfrequencyList[(char) fileData[i]]ファイルデータの文字が出現した回数を記録しようとしたが、charの範囲が-128から127であるため、範囲が0から255までのunsigned charを使ってfrequencyList[(unsigned char) fileData[i]]で回数を記録した
+\subsubsection{inserNodeの中身の一部について}
+最初は
+\begin{verbatim}
+while(temp->next != NULL){
+    if(temp->next->freq > newNode->freq){
+        newNode->next = temp->next;
+        temp->next = newNode;
+        return;
+    }
+    else{
+        temp = temp->next;
+    }
+}
+temp->next = newNode;
+\end{verbatim}
+改善後は
+\begin{verbatim}
+while(temp->next != NULL && temp->next->freq <= newNode->freq ){
+    temp = temp->next;
+}
+newNode->next = temp->next;
+temp->next = newNode;
+\end{verbatim}
+
+\subsubsection{archiveファイルについて}
+メモリを節約するため、ファイル一つずつarchiveファイルに書き込んだ。そのため、FileHeaderの位置がバラバラで、ftell()を使ってpointerの位置を計算し工夫した
+\subsubsection{時間情報の取得について}
+入出力例ではachiveファイルに各ファイルのModified時間が書かれている。それを取得するためstat関数について勉強し、struct stat fileStatを使ってファイルの各種情報を取得した。
+
+またarchiveファイルにCreated時間、つまり作成された時間が書かれているため、それを取得するためtime.hについても勉強した。
+\subsubsection{frequencyListについて}
+最初は
+\begin{verbatim}
+typedef struct dictionaryPart{
+    char ch;
+    int freq;
+    dictionaryPart* next;
+}dictionaryPart;
+\end{verbatim}
+で文字とその出現回数を記録し、文字が増えるごとに新たにdictionaryPartを作る仕組みでプログラムを作ろうしたが、特定のchが対応するfreqを探すためにdictionaryPart* headから一つずつ探す手間があり計算量が大きい且つプログラムが大きくなるためより良い方法を探した。その時思いついたのが、A=65のようにcharを0\verb|~|255までの数値に置き換えることができる点だ。それを活用し、その65をindexとすると、valueを探すのがかなり速くなる且つプログラムも簡単化できた
