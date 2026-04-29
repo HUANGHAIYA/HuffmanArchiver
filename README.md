@@ -13,7 +13,15 @@ Huffman符号化を用いて複数ファイルを1つのアーカイブとして
 
 ---
 
-## 🔧 ビルド方法
+## ビルド方法
 
 ```bash
-gcc -o huffman_archiver main.c
+gcc -o compress main.c
+## 実行方法
+コンパイル後、ターミナルで以下のコマンドとオプションが使用可能です
+Usage: ./compress <command> [options]
+Commands:
+  create <archive> <files...>   - Create compressed archive from files
+  extract <archive> [directory] - Extract archive to directory
+  list <archive>                - List contents of archive
+  test <file>                   - Analyze compression efficiency
