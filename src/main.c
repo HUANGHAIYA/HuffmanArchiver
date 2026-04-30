@@ -426,7 +426,7 @@ void extractArchive(char* archiveName, const char* outputDir){
 }
 
 void test(void){
-    printf("I'm sorry that I didn't write the function because I can't understand the Theoretical minimum.I don't know how to write");
+    printf("Unfinished");
 }
 
 int main(int argc, char* argv[]){
