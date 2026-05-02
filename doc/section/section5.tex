@@ -93,9 +93,6 @@ Commands:
   \label{fig:deerPixel}
 \end{figure}
 
-\subsection{プログラムの問題}
-今のプログラムは0もしくは1をASCIIに基づいてファイルに書き込んでいるため、実際は1 bitではなく1 byteで保存されているため、圧縮後のarchiveファイルが逆に元のファイルより大きい。それを解決するためにはbit streamでの書き込みや読み取り技術が必要で、今回は様々な問題を一つずつ改善したが、これだけはいまだに手の付けようが分からない。
-
 \subsection{工夫点　アピールポイント}
 \subsubsection{unsigned charについて}
 最初はcharを使ってfrequencyList[(char) fileData[i]]ファイルデータの文字が出現した回数を記録しようとしたが、charの範囲が-128から127であるため、範囲が0から255までのunsigned charを使ってfrequencyList[(unsigned char) fileData[i]]で回数を記録した
