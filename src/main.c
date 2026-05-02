@@ -30,7 +30,6 @@ void printUsage(void){
     printf("  create <archive> <files...>    - Create compressed archive from files\n");
     printf("  extract <archive> [directory]  - Extract archive to directory\n");
     printf("  list <archive>                 - List contents of archive\n");
-    printf("  test <file>                    - Analyze compression efficiency\n");
 }
 
 node* createNode(char ch, int freq){
@@ -125,13 +124,8 @@ void buildCodes(node* root, char* code, int depth){
 
 int compressFileToArchive(char* inputFile, FILE* output, long* origSize, long* compSize){
     if (!inputFile) {
-    //Because there was an error
-    //Compile Warning
-    //submission.c: In function 'compressFileToArchive':
-    //submission.c:148:32: warning: '%s' directive argument is null [-Wformat-overflow=]
-    //148 |         printf("Warning: File '%s' is empty\n", inputFile);
-    printf("Error: inputFile is NULL\n");
-    return 0;
+        printf("Error: inputFile is NULL\n");
+        return 0;
     }
     int frequencyList[MAX_CHAR] = {0};
     
@@ -146,14 +140,15 @@ int compressFileToArchive(char* inputFile, FILE* output, long* origSize, long* c
     stat(inputFile, &fileStat);
     
     // Count character frequencies
-    long fileSize = 0;
     char* fileData = NULL;
     
+    // Get file size
     fseek(input, 0, SEEK_END);
-    fileSize = ftell(input);
+    *origSize = ftell(input);
     rewind(input);
     
-    if (fileSize == 0) {
+    if (*origSize == 0) {
+        printf("Processing %s...\n", inputFile);
         printf("Warning: File '%s' is empty\n", inputFile);
     
         // Still write header for empty file
@@ -169,17 +164,14 @@ int compressFileToArchive(char* inputFile, FILE* output, long* origSize, long* c
         int emptyFreq[MAX_CHAR] = {0};
         fwrite(emptyFreq, sizeof(int), MAX_CHAR, output);
     
-        *origSize = 0;
-        *compSize = 0;
-    
         fclose(input);
-    return 1; // Return success instead of 0
+        return 1; // Return success instead of 0
     }
     
-    fileData = malloc(fileSize);
-    fread(fileData, 1, fileSize, input);
+    fileData = malloc(*origSize);
+    fread(fileData, 1, *origSize, input);
     
-    for (long i = 0; i < fileSize; i++) {
+    for (long i = 0; i < *origSize; i++) {
         frequencyList[(unsigned char)fileData[i]]++;
     }
     
@@ -201,34 +193,47 @@ int compressFileToArchive(char* inputFile, FILE* output, long* origSize, long* c
     }
     
     // Calculate compressed size
-    long compressedBits = 0;
-    for (long i = 0; i < fileSize; i++) {
-        compressedBits += strlen(codes[(unsigned char)fileData[i]]);
+    for (long i = 0; i < *origSize; i++) {
+        *compSize += strlen(codes[(unsigned char)fileData[i]]);
     }
+    *compSize = (*compSize + 7) / 8;
 
-    *origSize = fileSize;
-    *compSize = compressedBits;
-    
     // Write file header
     FileHeader header;
     strncpy(header.filename, inputFile, MAX_FILENAME - 1);
     header.filename[MAX_FILENAME - 1] = '\0';
-    header.originalSize = fileSize;
-    header.compressedSize = compressedBits;
+    header.originalSize = *origSize;
+    header.compressedSize = *compSize;
     header.modifiedTime = fileStat.st_mtime;
     
     fwrite(&header, sizeof(FileHeader), 1, output);
     fwrite(frequencyList, sizeof(int), MAX_CHAR, output);
     
     // Write compressed data
-    for (long i = 0; i < fileSize; i++) {
-        fputs(codes[(unsigned char)fileData[i]], output);
+    unsigned char bitBuffer = 0;
+    int bitCount = 0;
+    for (long i = 0; i < *origSize; i++) {
+        char* code = codes[(unsigned char)fileData[i]];
+        for (int j = 0; code[j] != '\0'; j++){
+            bitBuffer = (bitBuffer << 1) | (code[j] - '0');
+            bitCount++;
+            
+            if (bitCount == 8){
+                fputc(bitBuffer, output);
+                bitBuffer = 0;
+                bitCount = 0;
+            }
+        }
+    }
+    if (bitCount > 0){
+        bitBuffer = bitBuffer << (8 - bitCount);
+        fputc(bitBuffer,output);
     }
     
     printf("Processing %s...\n", inputFile);
-    printf("  Original size: %ld bytes\n", fileSize);
-    printf("  Compressed size: %ld bytes\n", (compressedBits+7)/8);
-    printf("  Compression ratio: %.1f%%\n", ((double)((compressedBits+7)/8) / fileSize) * 100);
+    printf("  Original size: %ld bytes\n", *origSize);
+    printf("  Compressed size: %ld bytes\n", *compSize);
+    printf("  Compression ratio: %.1f%%\n", ((double)*compSize / *origSize * 100));
     
     free(fileData);
     fclose(input);
@@ -264,9 +269,9 @@ void createArchive(char* archiveName, char** files, int fileCount){
     fclose(archive);
     printf("\nArchive created successfully!\n");
     printf("Total original size: %ld bytes\n", totalOriginal);
-    printf("Total compressed size: %ld bytes\n", (totalCompressed+7)/8);
+    printf("Total compressed size: %ld bytes\n", totalCompressed);
     if (totalOriginal > 0) {
-        printf("Overall compression ratio: %.1f%%\n", ((double)((totalCompressed+7)/8) / totalOriginal) * 100);
+        printf("Overall compression ratio: %.1f%%\n", ((double)totalCompressed / totalOriginal * 100));
     }
 }
 
@@ -310,9 +315,9 @@ void listArchive(char* archiveName) {
         struct tm *modTime = localtime(&header.modifiedTime);
         printf("File %d: %s\n", i + 1, header.filename);
         printf("  Original size: %ld bytes\n", header.originalSize);
-        printf("  Compressed size: %ld bytes\n", (header.compressedSize+7)/8);
+        printf("  Compressed size: %ld bytes\n", header.compressedSize);
         if (header.originalSize > 0) {
-            printf("  Compression: %.1f%%\n", ((double)((header.compressedSize+7)/8) / header.originalSize) * 100);
+            printf("  Compression: %.1f%%\n", ((double)header.compressedSize / header.originalSize) * 100);
         }
         printf("  Modified: %04d-%02d-%02d %02d:%02d:%02d\n", 
                modTime->tm_year + 1900, modTime->tm_mon + 1, modTime->tm_mday,
@@ -334,12 +339,14 @@ node* rebuildTree(int* frequencyList){
     }
 }
 
-void decompressFileFromArchive(FILE* input, const char* outputDir, int showProgress){
+void decompressFileFromArchive(FILE* input, const char* outputDir){
     FileHeader header;
     int frequencyList[MAX_CHAR];
     
     // Read file header
-    if(fread(&header, sizeof(FileHeader), 1, input) != 1) return;
+    if(fread(&header, sizeof(FileHeader), 1, input) != 1){
+        return;
+    }
     fread(frequencyList, sizeof(int), MAX_CHAR, input);
     
     // Create output path
@@ -358,40 +365,49 @@ void decompressFileFromArchive(FILE* input, const char* outputDir, int showProgr
     
     // Rebuild Huffman tree
     node* root = rebuildTree(frequencyList);
-    if(!root){
-        printf("Error: Cannot rebuild tree for '%s'\n", header.filename);
-        fclose(output);
-        return;
-    }
     
     // Decompress data
-    int bit;
+    int byte;
     node* current = root;
     long decompressedSize = 0;
+    long dataStart = ftell(input);
     
-    while(decompressedSize < header.originalSize && (bit = fgetc(input)) != EOF){
-        if(bit == '0'){
-            current = current->left ? current->left : current;
-        } else if(bit == '1'){
-            current = current->right ? current->right : current;
-        } else {
-            continue;
+    // Handle Single Character case
+    if (root && !root->left && !root->right) {
+        for (long i = 0; i < header.originalSize; i++) {
+            fputc(root->ch, output);
         }
-        
-        if(!current->left && !current->right){
-            fputc(current->ch, output);
-            current = root;
-            decompressedSize++;
+        fseek(input, dataStart + header.compressedSize, SEEK_SET);
+        fclose(output);
+        freeTree(root);
+        return;
+    }
+
+    while(decompressedSize < header.originalSize && (byte = fgetc(input)) != EOF){
+        for(int i = 7;i >= 0;i--) {
+            int bit = (byte >> i) & 1;
+            if(bit == 0) {
+                current = current->left;
+            }else {
+                current = current->right;
+            }
+
+            if(!current->left && !current->right){
+                fputc(current->ch, output);
+                current = root;
+                decompressedSize++;
+                if (decompressedSize >= header.originalSize) {
+                    break; 
+                }
+            }
         }
     }
-    
+    fseek(input, dataStart + header.compressedSize, SEEK_SET);
     fclose(output);
     
-    if (showProgress) {
-        printf("Extracting %s...\n", header.filename);
-        printf("  Decompressed: %ld → %ld bytes\n", (header.compressedSize+7)/8, decompressedSize);
-        printf("  Saved to: %s\n", outputPath);
-    }
+    printf("Extracting %s...\n", header.filename);
+    printf("  Decompressed: %ld → %ld bytes\n", header.compressedSize, decompressedSize);
+    printf("  Saved to: %s\n", outputPath);
     
     freeTree(root);
 }
@@ -417,16 +433,12 @@ void extractArchive(char* archiveName, const char* outputDir){
     }
     
     for(int i = 0; i < fileCount; i++){
-        decompressFileFromArchive(archive, outputDir, 1);
+        decompressFileFromArchive(archive, outputDir);
     }
     
     fclose(archive);
     printf("\nExtraction complete!\n");
     printf("%d files extracted successfully\n", fileCount);
-}
-
-void test(void){
-    printf("Unfinished");
 }
 
 int main(int argc, char* argv[]){
@@ -454,9 +466,6 @@ int main(int argc, char* argv[]){
     }
     else if(strcmp(argv[1], "list") == 0){
         listArchive(argv[2]);
-    }
-    else if(strcmp(argv[1], "test") == 0){
-        test();
     }
     else {
         printUsage();
